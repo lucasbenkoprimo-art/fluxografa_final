@@ -1,57 +1,35 @@
 ```mermaid
 graph LR
-    %% Estilos globais
-    classDef inicio e fim fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef processo fill:#fff,stroke:#333,stroke-width:1px;
-    classDef decisao fill:#ffffb3,stroke:#333,stroke-width:1px;
-    classDef destaque fill:#e6f2ff,stroke:#333,stroke-width:1px;
+    %% Estilos visuais limpos e profissionais
+    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
+    classDef inicio e fim fill:#f4e3f4,stroke:#666,stroke-width:2px;
+    classDef decisao fill:#fff9e6,stroke:#888,stroke-width:1px;
+    classDef destaque fill:#e6f2ff,stroke:#4a90e2,stroke-width:1px;
 
-    %% --- Bloco de Inicialização (Setup) ---
-    Start([Início]) --> Init[Inicializa Serial e Configura Pinos <br> Motor, LED e Buzzer]
-    Init --> InitState[Define estados iniciais <br> Alarmes DESLIGADOS]
-    InitState --> InitCalc[Lê ADC, calcula Temperatura Inicial <br> e define Pico Recente]
-    InitCalc --> InitTimers[Inicializa Timers <br> Respiração e Reset]
-
-    %% --- Bloco Principal (Loop) ---
-    InitTimers --> LoopStart[Início do Loop]
+    %% --- Inicialização ---
+    Start([Início]) --> Setup[Configura Pinos e <br> Define Temperatura Inicial]
     
-    LoopStart --> ReadNTC[Lê ADC do NTC e <br> calcula Temperatura Atual em °C]
+    %% --- Loop Principal ---
+    Setup --> ReadSensor[Lê Sensor NTC e <br> Calcula Temperatura Atual]
     
-    ReadNTC --> CheckPico{Temperatura C > <br> Pico Recente?}
+    %% Lógica de Pico / Respiração
+    ReadSensor --> CheckResp{Temperatura subiu? <br> Temp > Pico Recente}
     
-    %% Condição: Temperatura maior que o pico
-    CheckPico -- Sim --> UpdatePico[Pico Recente = Temperatura C <br> Atualiza tempo_ultima_respiracao]
-    UpdatePico --> CheckAlertaAtivo{Alerta está <br> Ativo? _alerta == 1_}
-    CheckAlertaAtivo -- Sim --> DesligaAlarmes[Alerta = 0 <br> Desliga Motor, LED e Buzzer <br> LOG: Respiração detectada]
-    CheckAlertaAtivo -- Não --> CalcQueda
-    DesligaAlarmes --> CalcQueda
+    CheckResp -- Sim --> RespDetectada[Atualiza Pico e <br> Desliga Alarmes se ativos]
+    CheckResp -- Não --> ReduzPico[Reduz gradativamente <br> o Pico Recente]
     
-    %% Condição: Temperatura menor ou igual ao pico
-    CheckPico -- Não --> DecPico[Decresce Pico Recente <br> _pico_recente -= 0.002_]
-    DecPico --> CalcQueda
+    %% Lógica de Apneia
+    RespDetectada --> CheckApneia{Queda > 1.5°C <br> por mais de 10s?}
+    ReduzPico --> CheckApneia
     
-    %% Cálculo de queda e exibição
-    CalcQueda[Calcula Queda = Pico Recente - Temperatura C <br> Exibe dados no Monitor Serial] --> CheckApneia{Queda > 1.5 E <br> Tempo sem respirar > 10s?}
+    CheckApneia -- Sim --> AtivaAlarmes[Dispara Alarmes: <br> Motor, LED e Buzzer]:::destaque
+    CheckApneia -- Não --> CheckReset
+    AtivaAlarmes --> CheckReset
     
-    %% Lógica de Disparo de Alarme
-    CheckApneia -- Sim --> CheckAlertaZero{Alerta está <br> Desativado? _alerta == 0_}
-    CheckAlertaZero -- Sim --> AtivaAlarmes[Alerta = 1 <br> LIGA Motor, LED e Buzzer <br> LOG: Apneia Detectada]:::destaque
-    CheckAlertaZero -- Não --> CheckAlertaLog
-    AtivaAlarmes --> CheckAlertaLog
-    CheckApneia -- Não --> CheckAlertaLog
+    %% Reset Ambiental e Loop
+    CheckReset{Passou de <br> 60 segundos?}
+    CheckReset -- Sim --> ResetAmb[Sincroniza Pico com <br> a Temperatura Atual]
+    CheckReset -- Não --> EndLoop
+    ResetAmb --> EndLoop
     
-    %% Log de alerta ativo
-    CheckAlertaLog{Alerta == 1?}
-    CheckAlertaLog -- Sim --> LogAlerta[LOG: Alerta Ativo!]
-    CheckAlertaLog -- Não --> CheckReset
-    LogAlerta --> CheckReset
-    
-    %% Reset Ambiental (60 segundos)
-    CheckReset{Tempo desde o último <br> reset > 60s?}
-    CheckReset -- Sim --> ResetPico[Pico Recente = Temperatura C <br> Atualiza tempo_ultimo_reset_ambiente]
-    CheckReset -- Não --> DelayBlock
-    ResetPico --> DelayBlock
-    
-    %% Finalização do ciclo
-    DelayBlock[Aguarda Delay de 150ms] --> LoopEnd([Fim do Loop])
-    LoopEnd --> LoopStart
+    EndLoop[Aguarda 150ms] --> ReadSensor
