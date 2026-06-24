@@ -1,35 +1,33 @@
 ```mermaid
 graph LR
-    %% Estilos visuais limpos e profissionais
-    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
-    classDef inicio e fim fill:#f4e3f4,stroke:#666,stroke-width:2px;
-    classDef decisao fill:#fff9e6,stroke:#888,stroke-width:1px;
-    classDef destaque fill:#e6f2ff,stroke:#4a90e2,stroke-width:1px;
+    %% Estilos Monocromáticos (Preto, Cinza e Branco)
+    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#333333;
+    classDef inicio e fim fill:#f0f0f0,stroke:#333333,stroke-width:2px,color:#333333;
+    classDef decisao fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#333333;
+    classDef destaque fill:#1a1a1a,stroke:#000000,stroke-width:2px,color:#ffffff;
 
-    %% --- Inicialização ---
-    Start([Início]) --> Setup[Configura Pinos e <br> Define Temperatura Inicial]
+    %% --- Fluxo Principal ---
+    Start([Início]) --> Setup[Configuração<br>Inicial]
+    Setup --> Read[Leitura do<br>Sensor NTC]
     
-    %% --- Loop Principal ---
-    Setup --> ReadSensor[Lê Sensor NTC e <br> Calcula Temperatura Atual]
-    
-    %% Lógica de Pico / Respiração
-    ReadSensor --> CheckResp{Temperatura subiu? <br> Temp > Pico Recente}
-    
-    CheckResp -- Sim --> RespDetectada[Atualiza Pico e <br> Desliga Alarmes se ativos]
-    CheckResp -- Não --> ReduzPico[Reduz gradativamente <br> o Pico Recente]
+    %% Lógica de Respiração
+    Read --> Cond1{Temperatura<br>Subiu?}
+    Cond1 -- Sim --> Resp[Atualiza Pico &<br>Zera Alarmes]
+    Cond1 -- Não --> Queda[Reduz Pico<br>Aos Poucos]
     
     %% Lógica de Apneia
-    RespDetectada --> CheckApneia{Queda > 1.5°C <br> por mais de 10s?}
-    ReduzPico --> CheckApneia
+    Resp --> Cond2{Queda > 1.5°C<br>por > 10s?}
+    Queda --> Cond2
     
-    CheckApneia -- Sim --> AtivaAlarmes[Dispara Alarmes: <br> Motor, LED e Buzzer]:::destaque
-    CheckApneia -- Não --> CheckReset
-    AtivaAlarmes --> CheckReset
+    %% Disparo do Alarme (Destaque em Preto)
+    Cond2 -- Sim --> Alarme[Dispara Alarmes:<br>Motor, LED e Buzzer]:::destaque
+    Cond2 -- Não --> Cond3
+    Alarme --> Cond3
     
-    %% Reset Ambiental e Loop
-    CheckReset{Passou de <br> 60 segundos?}
-    CheckReset -- Sim --> ResetAmb[Sincroniza Pico com <br> a Temperatura Atual]
-    CheckReset -- Não --> EndLoop
-    ResetAmb --> EndLoop
+    %% Reset Ambiental e Fechamento do Loop
+    Cond3{Tempo ><br>60s?}
+    Cond3 -- Sim --> Reset[Reset<br>Ambiental]
+    Cond3 -- Não --> Loop[Delay<br>150ms]
     
-    EndLoop[Aguarda 150ms] --> ReadSensor
+    Reset --> Loop
+    Loop --> Read
