@@ -1,10 +1,10 @@
 ```mermaid
-graph TD
+graph LR
     %% Estilos globais
     classDef inicio e fim fill:#f9f,stroke:#333,stroke-width:2px;
     classDef processo fill:#fff,stroke:#333,stroke-width:1px;
     classDef decisao fill:#ffffb3,stroke:#333,stroke-width:1px;
-    classDef alerta fill:#ffcccb,stroke:#f00,stroke-width:2px;
+    classDef destaque fill:#e6f2ff,stroke:#333,stroke-width:1px;
 
     %% --- Bloco de Inicialização (Setup) ---
     Start([Início]) --> Init[Inicializa Serial e Configura Pinos <br> Motor, LED e Buzzer]
@@ -35,7 +35,7 @@ graph TD
     
     %% Lógica de Disparo de Alarme
     CheckApneia -- Sim --> CheckAlertaZero{Alerta está <br> Desativado? _alerta == 0_}
-    CheckAlertaZero -- Sim --> AtivaAlarmes[Alerta = 1 <br> LIGA Motor, LED e Buzzer <br> LOG: Apneia Detectada]:::alerta
+    CheckAlertaZero -- Sim --> AtivaAlarmes[Alerta = 1 <br> LIGA Motor, LED e Buzzer <br> LOG: Apneia Detectada]:::destaque
     CheckAlertaZero -- Não --> CheckAlertaLog
     AtivaAlarmes --> CheckAlertaLog
     CheckApneia -- Não --> CheckAlertaLog
